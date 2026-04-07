@@ -1,0 +1,21 @@
+{
+  "name": "screen-graphics",
+  "version": "1.0.0",
+  "description": "Touch Portal plugin for on-screen overlay graphics effects",
+  "main": "plugin.js",
+  "scripts": {
+    "start": "node plugin.js",
+    "build": "node scripts/build.js",
+    "build:win": "node scripts/build.js win32",
+    "build:mac": "node scripts/build.js darwin",
+    "build:linux": "node scripts/build.js linux"
+  },
+  "dependencies": {
+    "electron": "^35.0.0",
+    "touchportal-api": "^3.3.0"
+  },
+  "devDependencies": {
+    "archiver": "^7.0.0",
+    "typescript": "5.5"
+  }
+}

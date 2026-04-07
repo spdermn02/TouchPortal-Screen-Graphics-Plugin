@@ -1,0 +1,124 @@
+{
+  "sdk": 6,
+  "version": 100,
+  "name": "Screen Graphics",
+  "id": "screen-graphics",
+  "configuration": {
+    "colorDark": "#1a1a2e",
+    "colorLight": "#e94560",
+    "parentCategory": "misc"
+  },
+  "plugin_start_cmd_windows": "%TP_PLUGIN_FOLDER%screen-graphics\\node.exe plugin.js",
+  "plugin_start_cmd_mac": "node %TP_PLUGIN_FOLDER%screen-graphics/plugin.js",
+  "plugin_start_cmd_linux": "node %TP_PLUGIN_FOLDER%screen-graphics/plugin.js",
+  "categories": [
+    {
+      "id": "screen-graphics.main",
+      "name": "Screen Graphics",
+      "actions": [
+        {
+          "id": "screen-graphics.action.queue_effect",
+          "name": "Queue Effect",
+          "prefix": "SG",
+          "type": "communicate",
+          "tryInline": true,
+          "format": "Queue effect {$screen-graphics.data.effect_name$} on {$screen-graphics.data.target_display$}",
+          "data": [
+            {
+              "id": "screen-graphics.data.effect_name",
+              "type": "choice",
+              "label": "Effect",
+              "default": "Flashbang",
+              "valueChoices": ["Flashbang", "Double Vision", "Screen Shake", "Static Glitch", "Tunnel Vision", "Color Invert", "Drunk Cam", "UFO Abduction", "Dial-Up Load", "Mirror Flip"]
+            },
+            {
+              "id": "screen-graphics.data.target_display",
+              "type": "choice",
+              "label": "Target Display",
+              "default": "Primary",
+              "valueChoices": ["Primary"]
+            }
+          ]
+        },
+        {
+          "id": "screen-graphics.action.queue_effect_delayed",
+          "name": "Queue Effect (Delayed)",
+          "prefix": "SG",
+          "type": "communicate",
+          "tryInline": true,
+          "format": "Queue effect {$screen-graphics.data.delayed_effect_name$} on {$screen-graphics.data.delayed_target_display$} after {$screen-graphics.data.delay_seconds$} seconds",
+          "data": [
+            {
+              "id": "screen-graphics.data.delayed_effect_name",
+              "type": "choice",
+              "label": "Effect",
+              "default": "Flashbang",
+              "valueChoices": ["Flashbang", "Double Vision", "Screen Shake", "Static Glitch", "Tunnel Vision", "Color Invert", "Drunk Cam", "UFO Abduction", "Dial-Up Load", "Mirror Flip"]
+            },
+            {
+              "id": "screen-graphics.data.delayed_target_display",
+              "type": "choice",
+              "label": "Target Display",
+              "default": "Primary",
+              "valueChoices": ["Primary"]
+            },
+            {
+              "id": "screen-graphics.data.delay_seconds",
+              "type": "number",
+              "label": "Delay (seconds)",
+              "default": "60",
+              "allowDecimals": false
+            }
+          ]
+        },
+        {
+          "id": "screen-graphics.action.stop_current",
+          "name": "Stop Current Effect",
+          "prefix": "SG",
+          "type": "communicate",
+          "format": "Stop current screen effect"
+        },
+        {
+          "id": "screen-graphics.action.stop_all",
+          "name": "Stop All Effects",
+          "prefix": "SG",
+          "type": "communicate",
+          "format": "Stop all screen effects and clear queue"
+        },
+        {
+          "id": "screen-graphics.action.clear_queue",
+          "name": "Clear Effect Queue",
+          "prefix": "SG",
+          "type": "communicate",
+          "format": "Clear effect queue (let current finish)"
+        }
+      ],
+      "states": [
+        {
+          "id": "screen-graphics.state.current_effect",
+          "type": "text",
+          "desc": "SG: Current Effect",
+          "default": "None"
+        },
+        {
+          "id": "screen-graphics.state.queue_length",
+          "type": "text",
+          "desc": "SG: Queue Length",
+          "default": "0"
+        },
+        {
+          "id": "screen-graphics.state.status",
+          "type": "text",
+          "desc": "SG: Plugin Status",
+          "default": "initializing"
+        },
+        {
+          "id": "screen-graphics.state.display_count",
+          "type": "text",
+          "desc": "SG: Display Count",
+          "default": "0"
+        }
+      ]
+    }
+  ]
+}
