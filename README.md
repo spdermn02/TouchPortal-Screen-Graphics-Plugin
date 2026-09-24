@@ -2,9 +2,12 @@
 
 A Touch Portal plugin that spawns transparent on-screen overlay effects for streamers. Viewers can trigger visual effects (flashbangs, screen shake, glitches, and more) that appear over the streamer's game without blocking input.
 
+> 📖 **New here?** See the [How-To Guide](docs/HOW-TO.md) for setup, custom effects, building, and troubleshooting.
+
 ## Features
 
-- 8 built-in screen effects
+- 10 built-in screen effects
+- Live screen streaming for motion-tracking effects
 - Effect queue system with delay support
 - Multi-monitor support - choose which display the effect appears on
 - Fully transparent, click-through overlay - the streamer can still play
@@ -21,8 +24,8 @@ A Touch Portal plugin that spawns transparent on-screen overlay effects for stre
 ### Development Setup
 
 ```bash
-git clone <repo-url>
-cd TouchPortal-Screen-Graphics
+git clone git@github.com:spdermn02/TouchPortal-Screen-Graphics-Plugin.git
+cd TouchPortal-Screen-Graphics-Plugin
 npm install
 ```
 
@@ -38,6 +41,8 @@ npm install
 | **Color Invert** | 4s | Strobing negative color inversion with hue rotation |
 | **Drunk Cam** | 8s | Heavy multi-frequency swaying, zoom breathing, queasy tint, and dark vignette |
 | **UFO Abduction** | 8s | A flying saucer descends, projects a tractor beam, and abducts taskbar icons (and a cow) |
+| **Dial-Up Load** | 30s | 90s dial-up style progressive image load that reveals the screen block by block |
+| **Mirror Flip** | 10s | Rotates the screen like a 3D cube to reveal a fully mirrored live display |
 
 All effects are semi-transparent (60-75% opacity) so the streamer can still see their game underneath.
 
@@ -82,7 +87,7 @@ These states update in real-time and can be used in Touch Portal buttons and con
 |---|---|---|
 | **SG: Current Effect** | Name of the currently playing effect | "Flashbang", "None" |
 | **SG: Queue Length** | Number of effects waiting in the queue | "0", "3" |
-| **SG: Plugin Status** | Current plugin state | "initializing", "connected", "ready" |
+| **SG: Plugin Status** | Current plugin state | "initializing", "connected", "starting", "ready" |
 | **SG: Display Count** | Number of detected monitors | "1", "2" |
 
 ## Testing Effects Without Touch Portal
@@ -110,30 +115,29 @@ The plugin automatically detects all connected displays when it starts. Each dis
 ## Known Limitations
 
 - **Exclusive fullscreen games**: The overlay cannot appear above games running in exclusive fullscreen mode (Vulkan/DX12). The game must be in **borderless windowed** mode.
-- **Screenshot timing**: The effect captures a screenshot of the screen at the moment it triggers. Since this is a frozen snapshot, it won't perfectly match a rapidly changing game scene.
+- **Screenshot timing**: Most effects distort a screenshot captured at trigger time, so they won't track a fast-moving scene. Flashbang, Drunk Cam, and Mirror Flip use a live screen stream instead.
+- **Windows only (packaged)**: Only the Windows build bundles Node.js and Electron. Mac/Linux builds are untested.
 - **GPU errors**: Some systems may occasionally log GPU-related errors in the console. These are typically harmless Electron/Chromium messages and don't affect the effect playback.
 
 ## Building the Plugin Package
 
 ```bash
-npm run build
+npm run build        # current OS
+npm run build:win    # → screen-graphics-win.tpp
 ```
 
-This creates `screen-graphics.tpp` in the project root, which can be imported into Touch Portal.
+This creates `screen-graphics-<os>.tpp` in the project root, which can be imported into Touch Portal. The downloaded `node.exe` is cached in `.build-cache/` between builds. See the [How-To Guide](docs/HOW-TO.md#5-build-and-release) for details and release steps.
 
 ## Architecture
 
-```
-Touch Portal <--socket--> plugin.js (Node.js)
-                              |
-                    TCP IPC (localhost)
-                              |
-                    Electron main process
-                              |
-                    Renderer (transparent overlay)
+```mermaid
+flowchart LR
+    TP[Touch Portal] <-->|socket| P["plugin.js (Node.js)"]
+    P <-->|TCP IPC, localhost| M[Electron main process]
+    M <-->|IPC| R["Renderer (transparent overlay)"]
 ```
 
-Touch Portal launches `plugin.js`, which connects via the `touchportal-api` package. When an effect is triggered, the plugin spawns (or reuses) an Electron process that creates a transparent, click-through, always-on-top window covering the target display. Effects run as animations in the Electron renderer.
+Touch Portal launches `plugin.js`, which connects via the `touchportal-api` package. Once connected, the plugin spawns a single long-lived Electron process that creates a transparent, click-through, always-on-top window covering the target display. Effects run as animations in the Electron renderer.
 
 ## License
 
