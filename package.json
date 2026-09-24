@@ -1,6 +1,6 @@
 {
   "name": "screen-graphics",
-  "version": "1.0.0",
+  "version": "0.1.0-alpha",
   "description": "Touch Portal plugin for on-screen overlay graphics effects",
   "main": "plugin.js",
   "scripts": {
