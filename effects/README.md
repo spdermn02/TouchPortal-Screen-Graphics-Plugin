@@ -67,6 +67,7 @@ execute: async (container, options) => { ... }
 - `options.screenshotDataUrl` - A data URL (`data:image/png;base64,...`) of the screen captured at the moment the effect was triggered. Use this as a `background-image` to create distorted versions of the screen.
 - `options.signal` - An [AbortSignal](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal). Check `signal.aborted` in your animation loop and stop early if true. This fires when the user triggers "Stop Current Effect".
 - `options.duration` - The duration in ms (may be overridden from the default).
+- `options.liveVideo` - A live `<video>` of the target display, or `null`. Only set when the effect declares `useLiveStream: true` (see [Using the Live Screen Stream](#using-the-live-screen-stream)).
 
 ### Return Value
 
@@ -107,6 +108,21 @@ container.appendChild(layer);
 ```
 
 For effects that don't need the screenshot (like Tunnel Vision which just overlays a mask), you can ignore `screenshotDataUrl` entirely.
+
+## Using the Live Screen Stream
+
+Set `useLiveStream: true` on the effect object and the runner passes `options.liveVideo`, a
+hidden `<video>` playing the target display live. Draw it to a canvas each frame:
+
+```javascript
+if (liveVideo && liveVideo.readyState >= 2) {
+  ctx.drawImage(liveVideo, 0, 0, canvas.width, canvas.height);
+}
+```
+
+`liveVideo` can be `null` if the stream fails to start, so always fall back to
+`screenshotDataUrl`. The overlay window is excluded from capture, so there's no feedback loop.
+See `flashbang.js`, `drunk-cam.js`, or `mirror-flip.js` for examples.
 
 ## Template: Minimal Effect
 
