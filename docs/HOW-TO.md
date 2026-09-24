@@ -138,7 +138,7 @@ themselves and cause a feedback loop.
 
 ## 3. Developer Setup
 
-**Prerequisites:** Node.js 20+, npm, git. You need Windows for real end-to-end testing because
+**Prerequisites:** Node.js 24+ (LTS), npm, git. You need Windows for real end-to-end testing because
 that's the only fully packaged target (see [Known Limitations](#8-known-limitations)).
 
 ```bash
@@ -287,7 +287,7 @@ What the build does (`scripts/build.js`):
 2. Copies `touchportal-api` and its transitive production dependencies. The `electron` npm
    package is excluded.
 3. Copies `node_modules/electron/dist` → `electron-dist/`.
-4. (Windows only) Downloads `node.exe` v20.18.1 once and caches it in `.build-cache/`
+4. (Windows only) Downloads `node.exe` v24.21.0 (LTS) once and caches it in `.build-cache/`
    (gitignored). Later builds reuse it. Delete the folder to force a fresh download.
 5. Zips everything under a `screen-graphics/` root into the `.tpp`, then deletes the temp dir.
 

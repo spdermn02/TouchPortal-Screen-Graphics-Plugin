@@ -12,7 +12,7 @@ const TEMP_DIR = path.join(ROOT, '.build-temp');
 const CACHE_DIR = path.join(ROOT, '.build-cache');
 
 // Node.js version to bundle (LTS)
-const NODE_VERSION = '20.18.1';
+const NODE_VERSION = '24.21.0';
 
 // Platform configs
 const PLATFORMS = {
