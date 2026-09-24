@@ -8,6 +8,8 @@ const archiver = require('archiver');
 const ROOT = path.join(__dirname, '..');
 const OUTPUT_NAME = 'screen-graphics';
 const TEMP_DIR = path.join(ROOT, '.build-temp');
+// Download cache lives outside TEMP_DIR so it survives the post-build cleanup
+const CACHE_DIR = path.join(ROOT, '.build-cache');
 
 // Node.js version to bundle (LTS)
 const NODE_VERSION = '20.18.1';
@@ -90,7 +92,10 @@ function copyDirSync(src, dest) {
     const srcPath = path.join(src, entry.name);
     const destPath = path.join(dest, entry.name);
 
-    if (entry.isDirectory()) {
+    if (entry.isSymbolicLink()) {
+      // Recreate symlinks as-is — Electron.app's frameworks depend on them
+      fs.symlinkSync(fs.readlinkSync(srcPath), destPath);
+    } else if (entry.isDirectory()) {
       copyDirSync(srcPath, destPath);
     } else {
       fs.copyFileSync(srcPath, destPath);
@@ -105,6 +110,14 @@ async function build(targetPlatform) {
   if (!config) {
     console.error(`Unsupported platform: ${platform}`);
     console.error(`Supported: ${Object.keys(PLATFORMS).join(', ')}`);
+    process.exit(1);
+  }
+
+  // node_modules/electron/dist only holds the binary for the OS npm install ran on
+  const electronBinPath = path.join(ROOT, 'node_modules', 'electron', 'dist', config.electronBin);
+  if (!fs.existsSync(electronBinPath)) {
+    console.error(`Electron binary for ${platform} not found: ${electronBinPath}`);
+    console.error('Run npm install on the target OS (or with npm_config_platform set), then rebuild.');
     process.exit(1);
   }
 
@@ -188,13 +201,14 @@ async function build(targetPlatform) {
     const nodeDestPath = path.join(stageDir, config.nodeFile);
 
     // Check if we already have it cached
-    const cachedNode = path.join(TEMP_DIR, `node-${NODE_VERSION}-${platform}.exe`);
+    const cachedNode = path.join(CACHE_DIR, `node-${NODE_VERSION}-${platform}.exe`);
     if (fs.existsSync(cachedNode)) {
       fs.copyFileSync(cachedNode, nodeDestPath);
       console.log('  Using cached node.exe');
     } else {
       await downloadFile(config.nodeUrl, nodeDestPath);
       // Cache for future builds
+      fs.mkdirSync(CACHE_DIR, { recursive: true });
       fs.copyFileSync(nodeDestPath, cachedNode);
     }
   }

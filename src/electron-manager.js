@@ -1,7 +1,20 @@
 const { spawn } = require('child_process');
+const fs = require('fs');
 const path = require('path');
 const net = require('net');
 const EventEmitter = require('events');
+
+// Electron's executable lives in a different spot per OS; on macOS it's inside the .app bundle
+function getBundledElectronPath(distDir) {
+  switch (process.platform) {
+    case 'win32':
+      return path.join(distDir, 'electron.exe');
+    case 'darwin':
+      return path.join(distDir, 'Electron.app', 'Contents', 'MacOS', 'Electron');
+    default:
+      return path.join(distDir, 'electron');
+  }
+}
 
 class ElectronManager extends EventEmitter {
   constructor() {
@@ -70,23 +83,20 @@ class ElectronManager extends EventEmitter {
   }
 
   _spawnElectron(port) {
-    // In production the Electron binary is bundled at <plugin>/electron-dist/electron.exe
+    // In production the Electron binary is bundled under <plugin>/electron-dist/
     // In development, fall back to require('electron') which resolves via node_modules
-    const pluginRoot = path.join(__dirname, '..');
-    const bundledElectron = process.platform === 'win32'
-      ? path.join(pluginRoot, 'electron-dist', 'electron.exe')
-      : path.join(pluginRoot, 'electron-dist', 'electron');
+    const bundledElectron = getBundledElectronPath(path.join(__dirname, '..', 'electron-dist'));
 
     let electronPath;
-    try {
-      const fs = require('fs');
-      if (fs.existsSync(bundledElectron)) {
-        electronPath = bundledElectron;
-      } else {
+    if (fs.existsSync(bundledElectron)) {
+      electronPath = bundledElectron;
+    } else {
+      try {
         electronPath = require('electron');
+      } catch (e) {
+        console.error(`Electron not found at ${bundledElectron} and electron package is not installed`);
+        return;
       }
-    } catch (e) {
-      electronPath = require('electron');
     }
 
     const mainScript = path.join(__dirname, '..', 'electron', 'main.js');
