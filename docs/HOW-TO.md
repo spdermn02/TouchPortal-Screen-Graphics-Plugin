@@ -132,6 +132,7 @@ themselves and cause a feedback loop.
 | `user-effects/` | Drop-in folder for custom effects |
 | `test-effect.js` | Standalone harness, no Touch Portal needed |
 | `scripts/build.js` | Builds the `.tpp` package |
+| `.github/workflows/release.yml` | CI: builds on PRs, publishes releases on `v*` tags |
 
 ---
 
@@ -165,6 +166,8 @@ Touch Portal launches the plugin itself, so the reliable path is to build, impor
 npm run build:win
 # import screen-graphics-win.tpp in Touch Portal, restart TP
 ```
+
+Can't build locally? Every PR's workflow run attaches the built `.tpp` under **Artifacts**.
 
 Plugin logs go to Touch Portal's log output. `[electron]`-prefixed lines come from the overlay
 process.
@@ -293,16 +296,35 @@ commit it.
 
 ### Cutting a release
 
+Releases are built and published by GitHub Actions
+(`.github/workflows/release.yml`). Don't upload `.tpp` files by hand.
+
 1. Bump `version` in `package.json` **and** `version` in `entry.tp` (integer, e.g. `100` →
    `101`). Touch Portal uses the `entry.tp` version.
-2. Build and smoke-test: import into Touch Portal, fire each effect, and try Stop and Stop All.
-3. Tag and publish:
+2. Open a PR. The workflow builds the Windows package; download it from the run's
+   **Artifacts** section, import it into Touch Portal, fire each effect, and try Stop and
+   Stop All.
+3. Merge, then tag `main`:
 
    ```bash
+   git checkout main && git pull
    git tag v1.0.1 && git push origin v1.0.1
-   gh release create v1.0.1 screen-graphics-win.tpp \
-     --title "v1.0.1" --notes "What changed..."
    ```
+
+The tag push builds the package, generates `SHA256SUMS.txt`, and publishes a release with
+auto-generated notes. Edit the notes on GitHub afterwards if you want more detail.
+
+| Trigger | Builds | Publishes |
+|---|---|---|
+| PR to `main` | ✅ (artifact, kept 14 days) | — |
+| Manual (**Actions → Build & Release → Run workflow**) | ✅ (artifact) | — |
+| Tag `v*` | ✅ | ✅ Release with `.tpp` + checksums |
+
+- **The tag must match `package.json`.** `v1.0.1` requires `"version": "1.0.1"`, otherwise the
+  build fails before anything is published.
+- **Pre-releases:** a tag with a suffix (`v1.1.0-beta.1`) is published as a pre-release.
+- **A failed release** leaves no release behind. Fix the problem, delete the tag
+  (`git push origin :v1.0.1 && git tag -d v1.0.1`), and tag again.
 
 ---
 

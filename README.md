@@ -126,7 +126,7 @@ npm run build        # current OS
 npm run build:win    # → screen-graphics-win.tpp
 ```
 
-This creates `screen-graphics-<os>.tpp` in the project root, which can be imported into Touch Portal. The downloaded `node.exe` is cached in `.build-cache/` between builds. See the [How-To Guide](docs/HOW-TO.md#5-build-and-release) for details and release steps.
+This creates `screen-graphics-<os>.tpp` in the project root, which can be imported into Touch Portal. The downloaded `node.exe` is cached in `.build-cache/` between builds. Official releases are built by GitHub Actions when a `v*` tag is pushed. See the [How-To Guide](docs/HOW-TO.md#5-build-and-release) for details and release steps.
 
 ## Architecture
 
