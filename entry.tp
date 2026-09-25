@@ -1,6 +1,6 @@
 {
   "sdk": 6,
-  "version": 101,
+  "version": 102,
   "name": "Screen Graphics",
   "id": "screen-graphics",
   "configuration": {
