@@ -67,7 +67,7 @@ execute: async (container, options) => { ... }
 - `options.screenshotDataUrl` - A data URL (`data:image/png;base64,...`) of the screen captured at the moment the effect was triggered. Use this as a `background-image` to create distorted versions of the screen.
 - `options.signal` - An [AbortSignal](https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal). Check `signal.aborted` in your animation loop and stop early if true. This fires when the user triggers "Stop Current Effect".
 - `options.duration` - The duration in ms (may be overridden from the default).
-- `options.liveVideo` - A live `<video>` of the target display, or `null`. Only set when the effect declares `useLiveStream: true` (see [Using the Live Screen Stream](#using-the-live-screen-stream)).
+- `options.liveVideo` - A live `<video>` of the target display, or `null`. Only set when the effect declares `useLiveStream: true` **and** the user has turned on **Hide overlay from screen capture** (see [Using the Live Screen Stream](#using-the-live-screen-stream)).
 
 ### Return Value
 
@@ -120,8 +120,11 @@ if (liveVideo && liveVideo.readyState >= 2) {
 }
 ```
 
-`liveVideo` can be `null` if the stream fails to start, so always fall back to
-`screenshotDataUrl`. The overlay window is excluded from capture, so there's no feedback loop.
+Live streams only run when the user turns on **Hide overlay from screen capture**. That's off by
+default so viewers can see effects in OBS, and a capturable overlay would record itself. So
+`liveVideo` is `null` for most users, and it's also `null` if the stream fails to start.
+**Always fall back to `screenshotDataUrl`**, and make sure your effect looks good that way.
+Test both modes with `node test-effect.js "My Effect" --hide-from-capture`.
 See `flashbang.js`, `drunk-cam.js`, or `mirror-flip.js` for examples.
 
 ## Template: Minimal Effect

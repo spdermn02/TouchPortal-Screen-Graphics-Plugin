@@ -23,6 +23,11 @@ const STATES = {
   DISPLAY_COUNT: `${PLUGIN_ID}.state.display_count`,
 };
 
+// Plugin settings are keyed by their display name in entry.tp
+const SETTINGS = {
+  HIDE_FROM_CAPTURE: 'Hide overlay from screen capture',
+};
+
 const IPC = {
   PLAY_EFFECT: 'PLAY_EFFECT',
   STOP_EFFECT: 'STOP_EFFECT',
@@ -37,6 +42,7 @@ const IPC = {
   DISPLAYS_LIST: 'DISPLAYS_LIST',
   CAPTURE_SCREENSHOT: 'CAPTURE_SCREENSHOT',
   SCREENSHOT_CAPTURED: 'SCREENSHOT_CAPTURED',
+  SET_CAPTURE_PROTECTION: 'SET_CAPTURE_PROTECTION',
 };
 
-module.exports = { PLUGIN_ID, ACTIONS, DATA, STATES, IPC };
+module.exports = { PLUGIN_ID, ACTIONS, DATA, STATES, SETTINGS, IPC };
