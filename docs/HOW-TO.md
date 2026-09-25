@@ -23,6 +23,7 @@ effects, and packaging a release. For the full effect API reference, see
    [Releases](https://github.com/spdermn02/TouchPortal-Screen-Graphics-Plugin/releases) page.
 2. In Touch Portal, open **Settings → Plug-ins → Import plug-in** and pick the `.tpp`.
 3. Trust the plugin when prompted, then restart Touch Portal.
+   Requires **Touch Portal 4.3 or newer**.
 4. The **SG: Plugin Status** state should read `ready` once the overlay is up.
 
 The Windows package is self-contained: it ships its own `node.exe` and Electron runtime, so you
@@ -64,6 +65,31 @@ Effects never overlap. Everything goes through a single FIFO queue.
 Example: to rate-limit viewer triggers, add a condition to your button so it only fires
 **Queue Effect** when `SG: Queue Length` is below `3`.
 
+### Show effects on stream (OBS)
+
+The overlay is visible to screen capture by default, so viewers see the effects.
+
+- **Use Display Capture** of the monitor the effects play on.
+- **Game Capture won't show effects.** It only hooks the game's own window. If you capture the
+  game that way, add a Display Capture of the same monitor above it.
+- **Avoid Window Capture of `electron.exe`.** The overlay hides between effects and may lose
+  its transparency.
+
+#### Plugin setting: Hide overlay from screen capture
+
+In **Settings → Plug-ins → Screen Graphics**. It's **Off** by default.
+
+| Setting | Viewers see effects | Flashbang / Drunk Cam / Mirror Flip |
+|---|---|---|
+| **Off** (default) | ✅ | Distort a snapshot taken when the effect triggers |
+| **On** | ❌ (only you see them) | Distort your screen live, in motion |
+
+The trade-off exists because the live effects record your screen while they play. If the
+overlay were visible to capture, they'd record themselves in an endless hall of mirrors.
+Windows can only hide a window from *all* capture, OBS included, or none. Changes apply from
+the next effect, with no restart needed. Switching it off during a live effect keeps the overlay
+hidden until that effect ends.
+
 ### Viewer-triggered effects
 
 The plugin doesn't talk to Twitch/YouTube itself. Wire whatever Touch Portal event source you
@@ -103,16 +129,21 @@ flowchart LR
    `screen-saver`-level always-on-top window. It sends `DISPLAYS_LIST` and `READY` back. The
    plugin then fills the **Target Display** dropdowns.
 4. **Trigger.** A button press → `EffectQueue.enqueue()` → `PLAY_EFFECT` over TCP.
-5. **Play.** Electron moves the window onto the target display, grabs a screenshot plus a
-   `desktopCapturer` source ID, shows the window, and hands both to the renderer.
+5. **Play.** Electron moves the window onto the target display, grabs a screenshot, shows the
+   window, and hands it to the renderer. It also passes a `desktopCapturer` source ID for live
+   effects, but only when the overlay is hidden from capture (see below).
 6. **Run.** `EffectRunner` injects the effect file as a `<script>`, picks up
    `window.__effectExport`, optionally starts a live screen stream (`useLiveStream: true`), and
    awaits `execute()`. It races that against the abort signal and a `duration + 5s` safety timeout.
 7. **Finish.** The renderer reports `effect-finished` (or `effect-error`), the window hides, and
    the queue advances to the next effect.
 
-The overlay window calls `setContentProtection(true)`, so live-stream effects don't capture
-themselves and cause a feedback loop.
+**Capture visibility.** The **Hide overlay from screen capture** setting travels from Touch
+Portal to `plugin.js` (the `Settings` event) and then to Electron (`SET_CAPTURE_PROTECTION`).
+Electron applies it with `setContentProtection()`. It's off by default so OBS can record the
+overlay. When it's off, no live source ID is handed out, because a capturable overlay would
+record itself; the live effects fall back to the screenshot. When it's on, the window is hidden
+from all capture and live streams are allowed.
 
 ### Source map
 
@@ -152,6 +183,7 @@ npm install
 ```bash
 node test-effect.js                    # Flashbang after 2s
 node test-effect.js "Mirror Flip" 1000 # any effect name, custom delay (ms)
+node test-effect.js Flashbang 500 --hide-from-capture  # live mode, hidden from OBS
 ```
 
 In the terminal: **Enter** replays, **s** stops mid-effect, **q** quits. The harness prints the
@@ -234,7 +266,9 @@ if (typeof window !== 'undefined') window.__effectExport = myEffect;
 | Frozen screenshot | `options.screenshotDataUrl` as a CSS background or `<img>` | Cheap distortions of what was on screen |
 | Live screen | Set `useLiveStream: true`, then `ctx.drawImage(options.liveVideo, …)` each frame | Distortions that should track the game in motion (Flashbang, Drunk Cam, Mirror Flip) |
 
-With live streams, check `liveVideo && liveVideo.readyState >= 2` before drawing, and fall back
+Live streams only run when **Hide overlay from screen capture** is on. That's off by default, so
+`liveVideo` is usually `null` and **your effect must work from the screenshot too**. With live
+streams, check `liveVideo && liveVideo.readyState >= 2` before drawing, and fall back
 to the screenshot if it's `null`. Starting the stream can fail, and it has a 2s startup timeout.
 
 ### Step 3: Test it
@@ -345,6 +379,7 @@ Plugin ↔ Electron uses newline-delimited JSON over TCP on `127.0.0.1`. Each me
 | `STOP_ALL` | — | Same as stop (the plugin clears the queue) |
 | `SHOW_OVERLAY` / `HIDE_OVERLAY` | — | Manual window visibility |
 | `GET_DISPLAYS` | — | Re-send `DISPLAYS_LIST` |
+| `SET_CAPTURE_PROTECTION` | `{ enabled }` | Hide or show the overlay to screen capture; also allows or blocks live streams |
 
 **Electron → Plugin**
 
@@ -356,7 +391,8 @@ Plugin ↔ Electron uses newline-delimited JSON over TCP on `127.0.0.1`. Each me
 | `EFFECT_FINISHED` | `{ name }` | Done or aborted; the queue advances |
 | `EFFECT_ERROR` | `{ name, error }` | Failed or timed out; the queue still advances |
 
-Messages sent before `READY` get queued in `ElectronManager` and flushed on `READY`.
+Messages sent before `READY` get queued in `ElectronManager` and flushed on `READY`. Anything
+sent from a `READY` listener (the capture setting) goes out ahead of that queue.
 
 ---
 
@@ -369,7 +405,8 @@ Messages sent before `READY` get queued in `ElectronManager` and flushed on `REA
 | Effect shows on the wrong monitor | Display list is stale. Restart the plugin; `Display N` labels come from detection order at startup |
 | New custom effect not in the dropdown | Missing `name`/`duration`, a syntax error (look for `Failed to load effect` in the logs), or the plugin wasn't restarted |
 | Queue stalls for a few seconds | An effect never resolved; the `duration + 5s` timeout rescued it. Fix the effect's resolve paths |
-| Live effect looks frozen | The live stream failed to start and the effect fell back to the screenshot. Check for `Failed to start live stream` |
+| Effects don't show up in OBS | Turn **Hide overlay from screen capture** off, then use Display Capture (not Game Capture) of that monitor. See [Show effects on stream](#show-effects-on-stream-obs) |
+| Live effect looks frozen | Expected when **Hide overlay from screen capture** is off, since live effects then use a snapshot. If it's on, the live stream failed to start; check for `Failed to start live stream` |
 | Build fails with `node.exe checksum mismatch` | The download was corrupted or tampered with. Retry; if it keeps failing, check your network or proxy before anything else. Don't bypass the check |
 | Two effects share a `name` | The later-loaded one wins, and `user-effects/` loads after `effects/`. Rename one |
 
@@ -383,7 +420,9 @@ Messages sent before `READY` get queued in `ElectronManager` and flushed on `REA
   and the build preserves the `.app` bundle's symlinks. Whether Touch Portal's `.tpp` importer
   keeps symlinks and the executable bit hasn't been tested, so treat mac/linux as experimental.
 - **Exclusive fullscreen games aren't supported** (OS/compositor limitation).
-- **Screenshot effects use a frozen frame.** Only effects with `useLiveStream: true` track motion.
+- **Screenshot effects use a frozen frame.** Only effects with `useLiveStream: true` track
+  motion, and only while the overlay is hidden from capture. You can have live motion or
+  on-stream effects, not both.
 - **One effect at a time.** By design, there's no layering or concurrent playback.
 - **Display labels are positional** (`Display 1`, `Display 2`, …). Changing your monitor
   arrangement can reshuffle them.

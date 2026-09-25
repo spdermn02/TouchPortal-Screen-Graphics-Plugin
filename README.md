@@ -7,7 +7,8 @@ A Touch Portal plugin that spawns transparent on-screen overlay effects for stre
 ## Features
 
 - 10 built-in screen effects
-- Live screen streaming for motion-tracking effects
+- Shows up in OBS (Display Capture) so viewers see the chaos
+- Optional live screen streaming for motion-tracking effects
 - Effect queue system with delay support
 - Multi-monitor support - choose which display the effect appears on
 - Fully transparent, click-through overlay - the streamer can still play
@@ -101,12 +102,25 @@ node test-effect.js
 # Specific effect with custom delay
 node test-effect.js "Screen Shake" 1000
 node test-effect.js "UFO Abduction" 500
+
+# Live mode: overlay hidden from capture, live effects stream the screen
+node test-effect.js Flashbang 500 --hide-from-capture
 ```
 
 **Controls while running:**
 - **Enter** - Replay the effect
 - **s** - Stop the current effect
 - **q** - Quit
+
+## Plugin Settings
+
+| Setting | Default | Description |
+|---|---|---|
+| **Hide overlay from screen capture** | Off | When on, the overlay is invisible to OBS and other screen capture, and Flashbang, Drunk Cam, and Mirror Flip distort your screen live. When off, viewers can see effects and those three use a snapshot instead. See the [How-To Guide](docs/HOW-TO.md#show-effects-on-stream-obs). |
+
+## Streaming with OBS
+
+Add a **Display Capture** of the monitor the effects play on. **Game Capture** only hooks the game's window, so it never shows effects. If you use it, put a Display Capture of the same monitor above it.
 
 ## Multi-Monitor Support
 
@@ -115,7 +129,8 @@ The plugin automatically detects all connected displays when it starts. Each dis
 ## Known Limitations
 
 - **Exclusive fullscreen games**: The overlay cannot appear above games running in exclusive fullscreen mode (Vulkan/DX12). The game must be in **borderless windowed** mode.
-- **Screenshot timing**: Most effects distort a screenshot captured at trigger time, so they won't track a fast-moving scene. Flashbang, Drunk Cam, and Mirror Flip use a live screen stream instead.
+- **Requires Touch Portal 4.3+** (plugin API 10).
+- **Screenshot timing**: Effects distort a screenshot captured at trigger time, so they won't track a fast-moving scene. Flashbang, Drunk Cam, and Mirror Flip can use a live screen stream, but only with **Hide overlay from screen capture** on, which also hides them from OBS.
 - **Windows only (packaged)**: Only the Windows build bundles Node.js and Electron. Mac/Linux builds are untested.
 - **GPU errors**: Some systems may occasionally log GPU-related errors in the console. These are typically harmless Electron/Chromium messages and don't affect the effect playback.
 
