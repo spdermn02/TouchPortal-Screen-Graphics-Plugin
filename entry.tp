@@ -15,7 +15,7 @@
     {
       "name": "Hide overlay from screen capture",
       "type": "switch",
-      "default": "Off"
+      "default": "off"
     }
   ],
   "categories": [
