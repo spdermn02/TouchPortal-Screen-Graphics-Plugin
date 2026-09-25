@@ -138,7 +138,7 @@ themselves and cause a feedback loop.
 
 ## 3. Developer Setup
 
-**Prerequisites:** Node.js 20+, npm, git. You need Windows for real end-to-end testing because
+**Prerequisites:** Node.js 24+ (LTS), npm, git. You need Windows for real end-to-end testing because
 that's the only fully packaged target (see [Known Limitations](#8-known-limitations)).
 
 ```bash
@@ -287,8 +287,11 @@ What the build does (`scripts/build.js`):
 2. Copies `touchportal-api` and its transitive production dependencies. The `electron` npm
    package is excluded.
 3. Copies `node_modules/electron/dist` → `electron-dist/`.
-4. (Windows only) Downloads `node.exe` v20.18.1 once and caches it in `.build-cache/`
+4. (Windows only) Downloads `node.exe` v24.21.0 (LTS) once and caches it in `.build-cache/`
    (gitignored). Later builds reuse it. Delete the folder to force a fresh download.
+   Every copy, cached or fresh, is checked against the release's official `SHASUMS256.txt`. A
+   bad cached copy is downloaded again; a bad download fails the build. The checksum is always
+   fetched fresh, so **builds need internet access** even with a warm cache.
 5. Zips everything under a `screen-graphics/` root into the `.tpp`, then deletes the temp dir.
 
 The output is about 150 MB, almost all of it Electron and Node. `*.tpp` is gitignored, so never
@@ -367,6 +370,7 @@ Messages sent before `READY` get queued in `ElectronManager` and flushed on `REA
 | New custom effect not in the dropdown | Missing `name`/`duration`, a syntax error (look for `Failed to load effect` in the logs), or the plugin wasn't restarted |
 | Queue stalls for a few seconds | An effect never resolved; the `duration + 5s` timeout rescued it. Fix the effect's resolve paths |
 | Live effect looks frozen | The live stream failed to start and the effect fell back to the screenshot. Check for `Failed to start live stream` |
+| Build fails with `node.exe checksum mismatch` | The download was corrupted or tampered with. Retry; if it keeps failing, check your network or proxy before anything else. Don't bypass the check |
 | Two effects share a `name` | The later-loaded one wins, and `user-effects/` loads after `effects/`. Rename one |
 
 ---

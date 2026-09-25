@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
@@ -12,12 +13,13 @@ const TEMP_DIR = path.join(ROOT, '.build-temp');
 const CACHE_DIR = path.join(ROOT, '.build-cache');
 
 // Node.js version to bundle (LTS)
-const NODE_VERSION = '20.18.1';
+const NODE_VERSION = '24.21.0';
 
 // Platform configs
 const PLATFORMS = {
   win32: {
     nodeUrl: `https://nodejs.org/dist/v${NODE_VERSION}/win-x64/node.exe`,
+    nodeShasumName: 'win-x64/node.exe',
     nodeFile: 'node.exe',
     electronBin: 'electron.exe',
   },
@@ -51,6 +53,52 @@ const SOURCE_DIRS = [
 const PROD_MODULES = [
   'touchportal-api',
 ];
+
+function fetchText(url) {
+  return new Promise((resolve, reject) => {
+    const makeRequest = (requestUrl, redirectsLeft = 5) => {
+      if (!requestUrl.startsWith('https://')) {
+        reject(new Error(`Refusing non-HTTPS URL: ${requestUrl}`));
+        return;
+      }
+      https.get(requestUrl, (res) => {
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          res.resume();
+          if (redirectsLeft === 0) {
+            reject(new Error(`Too many redirects fetching ${url}`));
+            return;
+          }
+          makeRequest(new URL(res.headers.location, requestUrl).toString(), redirectsLeft - 1);
+          return;
+        }
+        if (res.statusCode !== 200) {
+          res.resume();
+          reject(new Error(`Fetch failed: HTTP ${res.statusCode} for ${requestUrl}`));
+          return;
+        }
+        let body = '';
+        res.setEncoding('utf8');
+        res.on('data', (chunk) => { body += chunk; });
+        res.on('end', () => resolve(body));
+      }).on('error', reject);
+    };
+    makeRequest(url);
+  });
+}
+
+// Look up the official SHA-256 for a file in the Node release's SHASUMS256.txt
+async function getNodeChecksum(fileName) {
+  const sums = await fetchText(`https://nodejs.org/dist/v${NODE_VERSION}/SHASUMS256.txt`);
+  const line = sums.split('\n').find((l) => l.trim().endsWith(`  ${fileName}`));
+  if (!line) {
+    throw new Error(`No checksum for ${fileName} in Node v${NODE_VERSION} SHASUMS256.txt`);
+  }
+  return line.split(/\s+/)[0].toLowerCase();
+}
+
+function sha256File(filePath) {
+  return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
+}
 
 function downloadFile(url, destPath) {
   return new Promise((resolve, reject) => {
@@ -200,13 +248,25 @@ async function build(targetPlatform) {
     console.log('Downloading Node.js binary...');
     const nodeDestPath = path.join(stageDir, config.nodeFile);
 
-    // Check if we already have it cached
+    // Every copy (cached or fresh) is verified against the official checksum
+    const expectedHash = await getNodeChecksum(config.nodeShasumName);
+
     const cachedNode = path.join(CACHE_DIR, `node-${NODE_VERSION}-${platform}.exe`);
-    if (fs.existsSync(cachedNode)) {
+    if (fs.existsSync(cachedNode) && sha256File(cachedNode) === expectedHash) {
       fs.copyFileSync(cachedNode, nodeDestPath);
-      console.log('  Using cached node.exe');
+      console.log('  Using cached node.exe (checksum OK)');
     } else {
+      if (fs.existsSync(cachedNode)) {
+        console.warn('  Cached node.exe failed checksum, re-downloading');
+        fs.unlinkSync(cachedNode);
+      }
       await downloadFile(config.nodeUrl, nodeDestPath);
+      const actualHash = sha256File(nodeDestPath);
+      if (actualHash !== expectedHash) {
+        fs.unlinkSync(nodeDestPath);
+        throw new Error(`node.exe checksum mismatch: expected ${expectedHash}, got ${actualHash}`);
+      }
+      console.log('  Checksum OK');
       // Cache for future builds
       fs.mkdirSync(CACHE_DIR, { recursive: true });
       fs.copyFileSync(nodeDestPath, cachedNode);
