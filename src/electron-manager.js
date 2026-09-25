@@ -49,10 +49,14 @@ class ElectronManager extends EventEmitter {
 
             if (msg.type === 'READY') {
               this.ready = true;
+              // Emit before flushing so READY listeners (e.g. the capture setting) reach
+              // Electron ahead of any effects queued during startup
+              this.emit('message', msg);
               for (const queued of this.messageQueue) {
                 this._write(queued);
               }
               this.messageQueue = [];
+              continue;
             }
 
             this.emit('message', msg);

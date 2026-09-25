@@ -1,5 +1,5 @@
 const path = require('path');
-const { PLUGIN_ID, ACTIONS, DATA, STATES } = require('./src/constants');
+const { PLUGIN_ID, ACTIONS, DATA, STATES, SETTINGS, IPC } = require('./src/constants');
 const { TPClient, initTPClient } = require('./src/tp-client');
 const { ElectronManager } = require('./src/electron-manager');
 const { EffectQueue } = require('./src/effect-queue');
@@ -12,6 +12,24 @@ const effectLoader = new EffectLoader([
 
 const effectQueue = new EffectQueue();
 const electronManager = new ElectronManager();
+
+// Visible to OBS/screen capture by default; live-stream effects fall back to a screenshot
+let hideFromCapture = false;
+
+function sendCaptureSetting() {
+  electronManager.send({ type: IPC.SET_CAPTURE_PROTECTION, payload: { enabled: hideFromCapture } });
+}
+
+// Settings arrive as [{ "<setting name>": "<value>" }, ...]
+function getSettingValue(settings, name) {
+  if (!Array.isArray(settings)) return undefined;
+  const entry = settings.find((s) => s && Object.prototype.hasOwnProperty.call(s, name));
+  return entry ? entry[name] : undefined;
+}
+
+function isSwitchOn(value) {
+  return /^(on|true|1|yes)$/i.test(String(value).trim());
+}
 
 // Wire up effect queue to electron manager
 effectQueue.on('playEffect', (effect) => {
@@ -51,6 +69,7 @@ electronManager.on('message', (msg) => {
       break;
     case 'READY':
       console.log('Electron overlay ready');
+      sendCaptureSetting();
       TPClient.stateUpdate(STATES.STATUS, 'ready');
       break;
     case 'DISPLAYS_LIST':
@@ -143,6 +162,15 @@ initTPClient({
         effectQueue.clearQueue();
         break;
     }
+  },
+
+  onSettings: (settings) => {
+    const value = getSettingValue(settings, SETTINGS.HIDE_FROM_CAPTURE);
+    if (value === undefined) return;
+    hideFromCapture = isSwitchOn(value);
+    console.log(`Hide overlay from screen capture: ${hideFromCapture ? 'on' : 'off'}`);
+    // Before Electron is ready the READY handler sends the current value instead
+    if (electronManager.ready) sendCaptureSetting();
   },
 
   onConnected: () => {

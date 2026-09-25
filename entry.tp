@@ -1,5 +1,5 @@
 {
-  "sdk": 6,
+  "api": 10,
   "version": 102,
   "name": "Screen Graphics",
   "id": "screen-graphics",
@@ -11,6 +11,13 @@
   "plugin_start_cmd_windows": "%TP_PLUGIN_FOLDER%screen-graphics\\node.exe plugin.js",
   "plugin_start_cmd_mac": "node %TP_PLUGIN_FOLDER%screen-graphics/plugin.js",
   "plugin_start_cmd_linux": "node %TP_PLUGIN_FOLDER%screen-graphics/plugin.js",
+  "settings": [
+    {
+      "name": "Hide overlay from screen capture",
+      "type": "switch",
+      "default": "Off"
+    }
+  ],
   "categories": [
     {
       "id": "screen-graphics.main",

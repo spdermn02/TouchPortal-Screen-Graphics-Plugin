@@ -3,7 +3,7 @@ const { PLUGIN_ID, STATES } = require('./constants');
 
 const TPClient = new TouchPortalAPI.Client();
 
-function initTPClient({ onAction, onConnected }) {
+function initTPClient({ onAction, onConnected, onSettings }) {
   TPClient.connect({ pluginId: PLUGIN_ID });
 
   TPClient.on('connected', () => {
@@ -18,8 +18,10 @@ function initTPClient({ onAction, onConnected }) {
     if (onAction) onAction(data);
   });
 
+  // Fires with the initial values on connect and again whenever the user changes a setting
   TPClient.on('Settings', (data) => {
     console.log('Settings updated:', data);
+    if (onSettings) onSettings(data);
   });
 
   TPClient.on('Info', (data) => {

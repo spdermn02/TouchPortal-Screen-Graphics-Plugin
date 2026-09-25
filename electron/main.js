@@ -5,6 +5,15 @@ const net = require('net');
 let overlayWindow = null;
 let parentSocket = null;
 
+// When true the overlay is invisible to all screen capture (including OBS), which lets
+// live-stream effects capture the screen without seeing themselves. Off by default so
+// streamers' viewers can see the effects.
+let hideFromCapture = false;
+
+// True while an effect is streaming the screen live. Protection stays on until it ends,
+// even if the setting is switched off mid-effect, so it can't start recording itself.
+let liveStreamActive = false;
+
 // IPC port passed as command line arg
 const ipcPort = parseInt(process.argv.find((a) => a.startsWith('--ipc-port='))?.split('=')[1], 10);
 
@@ -107,15 +116,17 @@ function createOverlayWindow() {
   overlayWindow.setIgnoreMouseEvents(true);
   overlayWindow.setAlwaysOnTop(true, 'screen-saver');
 
-  // Try to exclude this window from screen capture so live mirroring
-  // doesn't create a feedback loop
+  applyCaptureProtection();
+
+  overlayWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+}
+
+function applyCaptureProtection() {
   try {
-    overlayWindow.setContentProtection(true);
+    overlayWindow.setContentProtection(hideFromCapture || liveStreamActive);
   } catch (e) {
     console.warn('setContentProtection not supported:', e.message);
   }
-
-  overlayWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 }
 
 function sendDisplaysList() {
@@ -185,10 +196,24 @@ async function handleParentMessage(msg) {
     case 'PLAY_EFFECT': {
       const { name, filePath, displayId, options } = msg.payload;
 
+      // Snapshot the setting so a change mid-way through the awaits below can't mix modes
+      const hidden = hideFromCapture;
+
+      // If the overlay is capturable, make sure it's hidden and repainted before the
+      // screenshot so the previous effect's last frame can't end up in it
+      if (!hidden && overlayWindow.isVisible()) {
+        overlayWindow.hide();
+        await new Promise((r) => setTimeout(r, 100));
+      }
+
       positionOverlayOnDisplay(displayId);
 
       const screenshotDataUrl = await captureScreenshot(displayId);
-      const screenSourceId = await getScreenSourceId(displayId);
+      // A live stream of a capturable overlay would record itself (feedback loop), so only
+      // hand out a source ID when the overlay is hidden from capture. Without it, live
+      // effects fall back to the screenshot.
+      const screenSourceId = hidden ? await getScreenSourceId(displayId) : null;
+      liveStreamActive = !!screenSourceId;
 
       overlayWindow.show();
 
@@ -223,17 +248,33 @@ async function handleParentMessage(msg) {
     case 'GET_DISPLAYS':
       sendDisplaysList();
       break;
+
+    case 'SET_CAPTURE_PROTECTION':
+      hideFromCapture = !!(msg.payload && msg.payload.enabled);
+      applyCaptureProtection();
+      console.log(`Capture protection ${hideFromCapture ? 'on' : 'off'}` +
+        (!hideFromCapture && liveStreamActive ? ' (after the current live effect ends)' : ''));
+      break;
+  }
+}
+
+function endLiveStream() {
+  if (liveStreamActive) {
+    liveStreamActive = false;
+    applyCaptureProtection();
   }
 }
 
 // Renderer tells us an effect finished
 ipcMain.on('effect-finished', (event, payload) => {
   overlayWindow.hide();
+  endLiveStream();
   sendToParent({ type: 'EFFECT_FINISHED', payload });
 });
 
 ipcMain.on('effect-error', (event, payload) => {
   overlayWindow.hide();
+  endLiveStream();
   sendToParent({ type: 'EFFECT_ERROR', payload });
 });
 

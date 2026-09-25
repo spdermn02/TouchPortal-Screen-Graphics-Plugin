@@ -1,16 +1,22 @@
 // Standalone test runner - launches Electron overlay and plays an effect
 // without needing Touch Portal running.
 //
-// Usage: node test-effect.js [effectName] [delayMs]
+// Usage: node test-effect.js [effectName] [delayMs] [--hide-from-capture]
 // Example: node test-effect.js Flashbang 2000
+//
+// --hide-from-capture hides the overlay from OBS/screen capture and enables live-stream
+// effects, matching the plugin's "Hide overlay from screen capture" setting.
 
 const { spawn } = require('child_process');
 const net = require('net');
 const path = require('path');
 const readline = require('readline');
 
-const effectName = process.argv[2] || 'Flashbang';
-const delayMs = parseInt(process.argv[3], 10) || 2000;
+const args = process.argv.slice(2);
+const hideFromCapture = args.includes('--hide-from-capture');
+const positional = args.filter((a) => !a.startsWith('--'));
+const effectName = positional[0] || 'Flashbang';
+const delayMs = parseInt(positional[1], 10) || 2000;
 
 // Load effect metadata
 const { EffectLoader } = require('./src/effect-loader');
@@ -27,6 +33,7 @@ if (!effect) {
 }
 
 console.log(`Testing effect: ${effect.name} (${effect.duration}ms)`);
+console.log(`Overlay ${hideFromCapture ? 'HIDDEN from' : 'VISIBLE to'} screen capture`);
 console.log(`Will trigger in ${delayMs}ms after Electron is ready...`);
 
 let clientSocket = null;
@@ -109,6 +116,7 @@ function handleMessage(msg) {
   switch (msg.type) {
     case 'READY':
       console.log('Electron ready!');
+      sendToElectron({ type: 'SET_CAPTURE_PROTECTION', payload: { enabled: hideFromCapture } });
       setTimeout(() => triggerEffect(), delayMs);
       break;
 
