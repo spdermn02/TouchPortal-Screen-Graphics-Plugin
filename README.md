@@ -116,7 +116,7 @@ node test-effect.js Flashbang 500 --hide-from-capture
 
 | Setting | Default | Description |
 |---|---|---|
-| **Hide overlay from screen capture** | Off | When on, the overlay is invisible to OBS and other screen capture, and Flashbang, Drunk Cam, and Mirror Flip distort your screen live. When off, viewers can see effects and those three use a snapshot instead. See the [How-To Guide](docs/HOW-TO.md#show-effects-on-stream-obs). |
+| **Hide overlay from screen capture** | Off | When on, the overlay is invisible to OBS and other screen capture, and Flashbang, Drunk Cam, and Mirror Flip distort your screen live. When off, viewers can see effects and those three use a snapshot instead. Press **Save** after changing it. See the [How-To Guide](docs/HOW-TO.md#show-effects-on-stream-obs). |
 
 ## Streaming with OBS
 

@@ -77,7 +77,8 @@ The overlay is visible to screen capture by default, so viewers see the effects.
 
 #### Plugin setting: Hide overlay from screen capture
 
-In **Settings → Plug-ins → Screen Graphics**. It's **Off** by default.
+In **Settings → Plug-ins → Screen Graphics**. It's **Off** by default. After flipping it,
+**press Save**, or Touch Portal won't pass the change to the plugin.
 
 | Setting | Viewers see effects | Flashbang / Drunk Cam / Mirror Flip |
 |---|---|---|
@@ -201,8 +202,8 @@ npm run build:win
 
 Can't build locally? Every PR's workflow run attaches the built `.tpp` under **Artifacts**.
 
-Plugin logs go to Touch Portal's log output. `[electron]`-prefixed lines come from the overlay
-process.
+Plugin logs go to Touch Portal's log, `%APPDATA%\TouchPortal\log.txt` (also on the **Logs** tab),
+tagged `[Screen Graphics]`. `[electron]`-prefixed lines come from the overlay process.
 
 ---
 
@@ -405,6 +406,7 @@ sent from a `READY` listener (the capture setting) goes out ahead of that queue.
 | Effect shows on the wrong monitor | Display list is stale. Restart the plugin; `Display N` labels come from detection order at startup |
 | New custom effect not in the dropdown | Missing `name`/`duration`, a syntax error (look for `Failed to load effect` in the logs), or the plugin wasn't restarted |
 | Queue stalls for a few seconds | An effect never resolved; the `duration + 5s` timeout rescued it. Fix the effect's resolve paths |
+| Setting change does nothing | You must press **Save** in the plugin settings. Check the Touch Portal log for `[Screen Graphics] Hide overlay from screen capture: on`/`off` |
 | Effects don't show up in OBS | Turn **Hide overlay from screen capture** off, then use Display Capture (not Game Capture) of that monitor. See [Show effects on stream](#show-effects-on-stream-obs) |
 | Live effect looks frozen | Expected when **Hide overlay from screen capture** is off, since live effects then use a snapshot. If it's on, the live stream failed to start; check for `Failed to start live stream` |
 | Build fails with `node.exe checksum mismatch` | The download was corrupted or tampered with. Retry; if it keeps failing, check your network or proxy before anything else. Don't bypass the check |
